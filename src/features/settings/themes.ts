@@ -8,12 +8,14 @@ const tint = (hex: string, a = 0.2) => {
   return '#' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(mix).join('');
 };
 
-export type Theme = { id: string; name: string; bg: string; needGroup?: string };
+export type Theme = { id: string; name: string; bg: string; needGroup?: string; needStreak?: number };
 export const THEMES: Theme[] = [
   { id: 'sky', name: '하늘', bg: '#EAF5FB' },
   { id: 'cream', name: '크림', bg: '#FFF3E3' },
   { id: 'mint', name: '민트', bg: '#E4F6EC' },
+  { id: 'flame', name: '불꽃', bg: '#FFE3D3', needStreak: 7 }, // 하루 목표를 7일 연속 달성
   ...LINE_GROUPS.map((g) => ({ id: `g:${g.name}`, name: `${g.name} 컬러`, bg: tint(LINE_DATA[g.ids[0]].line.color), needGroup: g.name })),
 ];
 export const themeBg = (id: string) => (THEMES.find((t) => t.id === id) ?? THEMES[0]).bg;
-export const themeUnlocked = (t: Theme, cleared: Record<number, boolean>) => !t.needGroup || mainCleared(t.needGroup, cleared);
+export const themeUnlocked = (t: Theme, cleared: Record<number, boolean>, bestStreak = 0) =>
+  (!t.needStreak || bestStreak >= t.needStreak) && (!t.needGroup || mainCleared(t.needGroup, cleared));

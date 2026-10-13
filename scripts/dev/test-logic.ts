@@ -1,0 +1,40 @@
+import { streakOf, dayKey } from '../../src/lib/streak';
+import { useTrabby } from '../../src/store/useTrabby';
+let fail = 0;
+const eq = (name: string, got: any, want: any) => { const ok = JSON.stringify(got) === JSON.stringify(want); if (!ok) fail++; console.log(ok ? '  ✓' : '  ✗', name, ok ? '' : `got=${JSON.stringify(got)} want=${JSON.stringify(want)}`); };
+const GOAL = 8000;
+const day = (back: number) => { const d = new Date(); d.setDate(d.getDate() - back); return dayKey(d); };
+
+console.log('연속 걷기 계산');
+eq('오늘 달성 + 어제·그제 달성 → 3', streakOf({ [day(0)]: 9000, [day(1)]: 8000, [day(2)]: 12000 }, GOAL), 3);
+eq('오늘은 아직 + 어제·그제 달성 → 2 (오늘은 안 끊김)', streakOf({ [day(0)]: 100, [day(1)]: 8000, [day(2)]: 8000 }, GOAL), 2);
+eq('어제 못 채움 → 오늘만 1', streakOf({ [day(0)]: 8000, [day(1)]: 7999, [day(2)]: 9000 }, GOAL), 1);
+eq('오늘도 어제도 못 채움 → 0', streakOf({ [day(0)]: 10, [day(2)]: 9000 }, GOAL), 0);
+eq('기록 없음 → 0', streakOf({}, GOAL), 0);
+
+console.log('걸음 저장소(addSteps)');
+useTrabby.setState({ dayLog: { [day(1)]: 8000, [day(2)]: 8500 }, bestStreak: 2 });
+useTrabby.getState().addSteps(5000);
+let s = useTrabby.getState();
+eq('오늘 걸음이 날짜별 기록에 쌓임', s.dayLog[day(0)], 5000);
+eq('목표 전에는 최고 연속 2 유지', s.bestStreak, 2);
+useTrabby.getState().addSteps(3000);
+s = useTrabby.getState();
+eq('목표(8000) 달성 → 최고 연속 3', s.bestStreak, 3);
+eq('노선 걸음도 쌓임 (3호선)', s.stepsByLine[3], 8000);
+eq('오늘 걸음수', s.todaySteps, 8000);
+// 완주한 노선에 걸음이 안 쌓여도 날짜별 기록과 연속은 계속 쌓여야 함
+const total = 57400;
+useTrabby.setState({ cleared: { 3: true }, clearedMeters: { 3: total } });
+useTrabby.getState().addSteps(1000);
+s = useTrabby.getState();
+eq('완주한 노선은 걸음 안 쌓임', s.stepsByLine[3], 8000);
+eq('그래도 오늘 기록은 쌓임', s.dayLog[day(0)], 9000);
+console.log('온보딩/마지막 확인 시각');
+eq('처음에는 안내 안 봄', useTrabby.getState().onboarded, false);
+useTrabby.getState().finishOnboarding(); eq('안내 마침', useTrabby.getState().onboarded, true);
+useTrabby.getState().setLastSeen(123); eq('마지막 확인 시각 저장', useTrabby.getState().lastSeenAt, 123);
+const old: Record<string, number> = {}; for (let i = 0; i < 200; i++) old[day(i + 5)] = 100;
+useTrabby.setState({ dayLog: old }); useTrabby.getState().addSteps(1);
+eq('기록은 최근 120일만 보관', Object.keys(useTrabby.getState().dayLog).length, 120);
+console.log(fail ? `\n실패 ${fail}건` : '\n모두 통과'); process.exit(fail ? 1 : 0);

@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useTrabby } from '../../store/useTrabby';
 import { LINES, LINE_DATA, LINE_GROUPS, lineLabel, lineBadge, courseName } from '../../data';
 import { metrics, stepsToMeters } from '../../lib/progress';
+import { CHARACTERS } from '../../data/rewards';
 
 export default function Lines() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function Lines() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF8EF' }}>
       <Text style={s.h}>노선도</Text>
+      <Text style={s.legend}>전체 {Object.keys(LINE_DATA).map(Number).filter((id) => cleared[id]).length}/{Object.keys(LINE_DATA).length} 코스 완주 · 전부 완주하면 🐉 전설 캐릭터</Text>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
         {LINE_GROUPS.map((g) => {
           const done = g.ids.filter((id) => cleared[id]).length;
@@ -29,7 +31,7 @@ export default function Lines() {
             <View key={g.name} style={{ marginBottom: 14 }}>
               <View style={s.gh}>
                 <Text style={s.gt}>{g.name}</Text>
-                {g.ids.length > 1 && <Text style={s.gc}>{done}/{g.ids.length} 코스 완주</Text>}
+                {g.ids.length > 1 && <Text style={s.gc}>{done}/{g.ids.length} 코스 완주{CHARACTERS.find((c) => c.group === g.name) ? ` · 전부 완주하면 ${CHARACTERS.find((c) => c.group === g.name)!.emoji}` : ''}</Text>}
               </View>
               {g.ids.map((id) => {
                 const { line, stations } = LINE_DATA[id];
@@ -61,6 +63,7 @@ export default function Lines() {
 }
 const s = StyleSheet.create({
   h: { fontSize: 22, fontWeight: '800', color: '#3A2F26', padding: 20 },
+  legend: { fontSize: 12, fontWeight: '800', color: '#C9A227', paddingHorizontal: 20, marginTop: -10, marginBottom: 10 },
   gh: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 4, marginBottom: 6 },
   gt: { fontSize: 16, fontWeight: '800', color: '#3A2F26' },
   gc: { fontSize: 11, fontWeight: '800', color: '#F26B1D' },

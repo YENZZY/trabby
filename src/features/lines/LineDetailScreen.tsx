@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Svg from 'react-native-svg';
 import { useCharacter } from '../../store/useCharacter';
+import { CharacterImage } from '../../shared/CharacterImage';
 import { Turtle } from '../../shared/Turtle';
 import { useActive } from '../../store/useActive';
 
@@ -42,7 +43,7 @@ export default function LineDetail() {
                 {i > 0 && <View style={[s.seg, { top: 0, bottom: '50%', backgroundColor: i <= cur || done ? line.color : GRAY }]} />}
                 {i < stations.length - 1 && <View style={[s.seg, { top: '50%', bottom: 0, backgroundColor: i < cur || done ? line.color : GRAY }]} />}
                 {isCur ? (
-                  <View style={s.avatar}>{character.emoji ? <Text style={{ fontSize: 26 }}>{character.emoji}</Text> : <Svg width={34} height={38} viewBox="-30 -46 60 66"><Turtle x={0} y={0} color={line.color} /></Svg>}</View>
+                  <View style={s.avatar}><CharacterImage id={character.id} size={34} color={line.color} /></View>
                 ) : (
                   <View style={[s.node, { borderColor: ok ? line.color : GRAY }]} />
                 )}

@@ -1,9 +1,10 @@
 import React from 'react';
 import { View } from 'react-native';
-import Svg, { Polyline, Circle, Rect, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Polyline, Circle, Rect, Text as SvgText } from 'react-native-svg';
 import type { LineData } from '../../data';
 import { locate } from '../../lib/progress';
-import { Turtle } from '../../shared/Turtle';
+import type { CharState } from '../../shared/CharacterImage';
+import { Marker } from './Marker';
 
 const W = 340;
 const ROW = 84;
@@ -26,7 +27,7 @@ const Tree = ({ x, y, s = 1 }: { x: number; y: number; s?: number }) => (
   </>
 );
 
-export function RouteMap({ data, meters, emoji }: { data: LineData; meters: number; emoji?: string | null }) {
+export function RouteMap({ data, meters, characterId = 'turtle', state = 'idle' }: { data: LineData; meters: number; characterId?: string; state?: CharState }) {
   const { stations, line } = data;
   const pts = React.useMemo(() => layout(data), [data]);
   const { seg, t } = locate(data, meters);
@@ -40,7 +41,7 @@ export function RouteMap({ data, meters, emoji }: { data: LineData; meters: numb
   const chunks = Math.ceil(H / CHUNK);
 
   return (
-    <View>
+    <View style={{ width: W, height: H }}>
       {Array.from({ length: chunks }, (_, k) => {
         const y0 = k * CHUNK;
         const h = Math.min(CHUNK, H - y0);
@@ -67,26 +68,11 @@ export function RouteMap({ data, meters, emoji }: { data: LineData; meters: numb
                 </React.Fragment>
               );
             })}
-            {inView(me.y, 140) && (
-              <>
-                <Rect x={bx - 62} y={me.y - 104} width={124} height={44} rx={16} fill="#fff" stroke="#F3D9C4" strokeWidth={2} />
-                <Path d={`M${bx - 6} ${me.y - 60} L${bx} ${me.y - 52} L${bx + 6} ${me.y - 60} Z`} fill="#fff" />
-                <SvgText x={bx} y={me.y - 86} fontSize={12} fontWeight="700" fill="#F26B1D" textAnchor="middle">
-                  {meters <= 0 ? '출발해볼까?' : '조금만 더!'}
-                </SvgText>
-                <SvgText x={bx} y={me.y - 70} fontSize={11} fontWeight="600" fill="#8A7B6D" textAnchor="middle">
-                  {meters <= 0 ? '걸으면 움직여요' : '도착할 수 있어요!'}
-                </SvgText>
-                {emoji ? (
-                  <SvgText x={me.x} y={me.y + 2} fontSize={38} textAnchor="middle">{emoji}</SvgText>
-                ) : (
-                  <Turtle x={me.x} y={me.y - 14} color={line.color} />
-                )}
-              </>
-            )}
           </Svg>
         );
       })}
+      {/* 캐릭터와 말풍선은 지도 위에 따로 얹어서, 움직여도 지도를 다시 그리지 않아요 */}
+      <Marker x={me.x} y={me.y} bx={bx} started={meters > 0} characterId={characterId} state={state} color={line.color} />
     </View>
   );
 }

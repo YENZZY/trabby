@@ -6,6 +6,7 @@ import { useTrabby } from '../../store/useTrabby';
 import { stepsToMeters, metrics } from '../../lib/progress';
 import { LINES, LINE_DATA, LINE_GROUPS, lineLabel, lineBadge } from '../../data';
 import { CHARACTERS, charUnlocked } from '../../data/rewards';
+import { CharacterImage } from '../../shared/CharacterImage';
 
 const TABS = ['노선 도감', '캐릭터 도감', '뱃지'];
 const PILL: Record<string, [string, string]> = {
@@ -14,7 +15,7 @@ const PILL: Record<string, [string, string]> = {
 
 export default function Dex() {
   const router = useRouter();
-  const { stepsByLine, cleared, activeLine, settings, setSetting } = useTrabby();
+  const { stepsByLine, cleared, activeLine, settings, setSetting, legendUnlocked, bestStreak } = useTrabby();
   const pctOf = (id: number) => {
     const d = LINE_DATA[id];
     return d ? Math.min(1, stepsToMeters(stepsByLine[id] ?? 0) / metrics(d).total) : 0;
@@ -22,11 +23,11 @@ export default function Dex() {
   const totalSteps = Object.values(stepsByLine).reduce((a, b) => a + b, 0);
   const clearedCount = Object.values(cleared).filter(Boolean).length;
   const [tab, setTab] = useState(0);
-  const Cell = ({ icon, color, name, status, sub, on, onPress }: any) => {
+  const Cell = ({ icon, iconNode, color, name, status, sub, on, onPress }: any) => {
     const [pb, pc] = PILL[status];
     return (
       <Pressable disabled={!onPress} onPress={onPress} style={[s.cell, { backgroundColor: on ? color + '22' : '#F5F1EA' }]}>
-        <View style={[s.badge, { backgroundColor: on ? color : '#CFC6BC' }]}><Text style={s.bt}>{icon}</Text></View>
+        <View style={[s.badge, { backgroundColor: on ? color : '#CFC6BC' }]}>{iconNode ?? <Text style={s.bt}>{icon}</Text>}</View>
         <Text style={s.name}>{name}</Text>
         <View style={[s.pill, { backgroundColor: pb }]}><Text style={[s.pt, { color: pc }]}>{status}</Text></View>
         {sub ? <Text style={s.sub}>{sub}</Text> : null}
@@ -71,14 +72,19 @@ export default function Dex() {
           </View>
         </>)}
         {tab === 1 && (<>
-          <Text style={s.hint}>1호선 코스처럼 갈래가 있는 노선의 추가 코스(지선 등)를 완주하면 캐릭터가 열려요. 눌러서 바꿔 보세요!</Text>
+          <Text style={s.hint}>코스가 여러 개인 노선(1·2·5호선)의 전 코스를 완주하면 그 노선 캐릭터가, 앱의 모든 코스를 완주하면 전설 캐릭터가 열려요. 눌러서 바꿔 보세요!</Text>
           {CHARACTERS.map((c) => {
-            const ok = charUnlocked(c, cleared);
+            const ok = charUnlocked(c, cleared, legendUnlocked);
             const using = settings.character === c.id;
-            const color = c.route ? LINE_DATA[c.route]?.line.color ?? '#8A7B6D' : '#3DBE6B';
+            const g = LINE_GROUPS.find((x) => x.name === c.group);
+            const allIds = Object.keys(LINE_DATA).map(Number);
+            const color = c.legendary ? '#C9A227' : g ? LINE_DATA[g.ids[0]].line.color : '#3DBE6B';
+            const sub = ok ? (c.legendary ? '전설' : '')
+              : c.legendary ? `전체 ${allIds.filter((id) => cleared[id]).length}/${allIds.length} 코스`
+              : g ? `${c.group} ${g.ids.filter((id) => cleared[id]).length}/${g.ids.length} 코스` : '';
             return (
-              <Cell key={c.id} icon={c.emoji} color={color} name={c.name}
-                status={using ? '사용 중' : ok ? '보유중' : 'LOCKED'} sub={ok || !c.route ? '' : `${lineLabel(c.route)} 완주 시`} on={ok}
+              <Cell key={c.id} icon={c.emoji} iconNode={<View style={{ opacity: ok ? 1 : 0.3 }}><CharacterImage id={c.id} size={34} color={color} /></View>} color={color} name={c.legendary ? `✨ ${c.name}` : c.name}
+                status={using ? '사용 중' : ok ? '보유중' : 'LOCKED'} sub={sub} on={ok}
                 onPress={ok ? () => setSetting('character', c.id) : undefined} />
             );
           })}
@@ -92,6 +98,10 @@ export default function Dex() {
             const all = g.ids.every((id) => cleared[id]);
             return <Cell key={`a${g.name}`} icon="🎖️" color={LINE_DATA[g.ids[0]].line.color} name={`${g.name} 전 코스`} status={all ? '획득' : 'LOCKED'} on={all} />;
           })}
+          <Cell key="all" icon="🏆" color="#C9A227" name="전 코스 정복" status={legendUnlocked ? '획득' : 'LOCKED'} on={legendUnlocked} />
+          {[3, 7, 14, 30].map((n) => (
+            <Cell key={`s${n}`} icon="🔥" color="#F26B1D" name={`연속 ${n}일`} status={(bestStreak ?? 0) >= n ? '획득' : 'LOCKED'} on={(bestStreak ?? 0) >= n} />
+          ))}
           {[[1, '첫 걸음'], [10000, '누적 1만 보'], [100000, '누적 10만 보'], [500000, '누적 50만 보']].map(([n, name]) => (
             <Cell key={String(name)} icon="👣" color="#3DBE6B" name={String(name)} status={totalSteps >= (n as number) ? '획득' : 'LOCKED'} on={totalSteps >= (n as number)} />
           ))}

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, Modal, Switch, TextInput, Linking, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, Modal, Switch, TextInput, Linking, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pedometer } from 'expo-sensors';
 import { useTrabby } from '../../store/useTrabby';
 import { STRIDE_M } from '../../lib/progress';
 import { THEMES, themeUnlocked } from './themes';
 import { useCharacter } from '../../store/useCharacter';
+import { CharacterImage } from '../../shared/CharacterImage';
 
 const SUPPORT_EMAIL = 'support@trabby.app'; // TODO: 실제 문의 메일로 교체
 const FAQ = [
@@ -17,7 +18,7 @@ const FAQ = [
 type Sheet = null | 'steps' | 'alert' | 'theme' | 'lang' | 'faq' | 'nick';
 
 export default function Settings() {
-  const { settings, setSetting, cleared, reset } = useTrabby();
+  const { settings, setSetting, cleared, reset, bestStreak } = useTrabby();
   const [sheet, setSheet] = useState<Sheet>(null);
   const [avail, setAvail] = useState<boolean | null>(null);
   const [nick, setNick] = useState(settings.nickname);
@@ -33,7 +34,7 @@ export default function Settings() {
     ['🌐', '언어 설정', '한국어', 'lang'],
     ['💬', '고객센터', 'FAQ / 문의하기', 'faq'],
   ];
-  const Toggle = ({ label, desc, k }: { label: string; desc: string; k: 'arrivalAlert' | 'extAlert' }) => (
+  const Toggle = ({ label, desc, k }: { label: string; desc: string; k: 'arrivalAlert' | 'extAlert' | 'sound' | 'haptic' }) => (
     <View style={s.srow}><View style={{ flex: 1 }}><Text style={s.t}>{label}</Text><Text style={s.d}>{desc}</Text></View>
       <Switch value={settings[k]} onValueChange={(v) => setSetting(k, v)} trackColor={{ true: '#F26B1D' }} /></View>
   );
@@ -42,7 +43,7 @@ export default function Settings() {
       <ScrollView>
         <Text style={s.h}>⚙️  설정</Text>
         <Pressable style={[s.card, s.profile]} onPress={() => { setNick(settings.nickname); setSheet('nick'); }}>
-          <View style={s.av}><Text style={{ fontSize: 34 }}>{character.emoji ?? '🐢'}</Text></View>
+          <View style={s.av}><CharacterImage id={character.id} size={44} /></View>
           <View style={{ flex: 1 }}><Text style={s.t}>{settings.nickname} 🌱</Text><Text style={s.d}>오늘도 걷는 중!</Text></View>
           <Text style={s.chev}>›</Text>
         </Pressable>
@@ -70,23 +71,25 @@ export default function Settings() {
           <Pressable style={s.sheet} onPress={() => {}}>
             {sheet === 'steps' && (<>
               <Text style={s.sh}>걸음 수 설정</Text>
-              <Text style={s.body}>걸음 센서: {sensor}{'\n'}보폭: {Math.round(STRIDE_M * 100)}cm 고정 (모든 사용자 동일){'\n\n'}에뮬레이터에는 걸음 센서가 없어서 "사용 불가"로 나와요. 홈 화면의 +300 걸음 버튼으로 테스트하세요.</Text>
+              <Text style={s.body}>걸음 센서: {sensor}{'\n'}보폭: {Math.round(STRIDE_M * 100)}cm 고정 (모든 사용자 동일){'\n\n'}에뮬레이터에는 걸음 센서가 없어서 "사용 불가"로 나와요. 홈 화면의 +300 걸음 버튼으로 테스트하세요.{'\n\n'}앱을 꺼 둔 동안의 걸음: {Platform.OS === 'ios' ? '다시 열 때 자동으로 반영돼요 (최근 7일)' : '안드로이드에서는 앱이 켜진 동안만 세요'}</Text>
             </>)}
             {sheet === 'alert' && (<>
               <Text style={s.sh}>알림 설정</Text>
               <Toggle label="도착 알림" desc="앱을 켜 둔 동안 역을 지날 때 알려줘요" k="arrivalAlert" />
               <Toggle label="새 구간 안내" desc="완주한 노선에 역이 늘면 알려줘요" k="extAlert" />
+              <Toggle label="효과음" desc="역 도착, 목표 달성, 완주 때 소리가 나요" k="sound" />
+              <Toggle label="진동" desc="역 도착, 목표 달성, 완주 때 진동해요" k="haptic" />
             </>)}
             {sheet === 'theme' && (<>
               <Text style={s.sh}>테마 설정</Text>
               <ScrollView style={{ maxHeight: 380 }}>
                 {THEMES.map((t) => {
-                  const locked = !themeUnlocked(t, cleared);
+                  const locked = !themeUnlocked(t, cleared, bestStreak ?? 0);
                   return (
                     <Pressable key={t.id} disabled={locked} onPress={() => { setSetting('theme', t.id); close(); }} style={[s.srow, locked && { opacity: 0.5 }]}>
                       <View style={[s.sw, { backgroundColor: t.bg }]} />
                       <Text style={[s.t, { flex: 1 }]}>{t.name}</Text>
-                      <Text style={s.d}>{locked ? `🔒 ${t.needGroup} 완주 시 해금` : settings.theme === t.id ? '✔ 사용 중' : ''}</Text>
+                      <Text style={s.d}>{locked ? `🔒 ${t.needStreak ? `${t.needStreak}일 연속 목표 달성` : `${t.needGroup} 완주`} 시 해금` : settings.theme === t.id ? '✔ 사용 중' : ''}</Text>
                     </Pressable>
                   );
                 })}
